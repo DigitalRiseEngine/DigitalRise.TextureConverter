@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "DigitalRise.TextureConverter": {
+      "commandName": "Project",
+      "commandLineArgs": "--help"
+    }
+  }
+}
