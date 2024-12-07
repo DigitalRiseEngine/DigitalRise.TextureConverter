@@ -8,6 +8,7 @@
     <ToolCommandName>drtexconv</ToolCommandName>
     <Version>0.3.0</Version>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <AssemblyName>drtexconv</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>

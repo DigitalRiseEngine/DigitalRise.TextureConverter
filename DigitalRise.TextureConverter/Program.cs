@@ -32,27 +32,29 @@ namespace DigitalRise.TextureConverter
 
 			grid.SetMaximumWidth(0, 30);
 
-			grid.SetValue(0, 0, "-n, --noMipmaps");
-			grid.SetValue(1, 0, "Prevents the generation of the mipmaps.");
-			grid.SetValue(0, 1, "--inputGamma <floatNumber>");
-			grid.SetValue(1, 1, "Specifies the gamma of the input texture. Default value is 2.2f.");
-			grid.SetValue(0, 2, "--outputGamma <floatNumber>");
-			grid.SetValue(1, 2, "Specifies the gamma of the output texture. Default value is 2.2f.");
-			grid.SetValue(0, 3, "-a, --noPremultiplyAlpha");
-			grid.SetValue(1, 3, "Prevents the premultiply of the alpha.");
-			grid.SetValue(0, 4, "-r, --resizeToPowerOfTwo");
-			grid.SetValue(1, 4, "If enabled, the texture is resized to the next largest power of two, maximizing compatibility. Many graphics cards do not support textures sizes that are not a power of two.");
-			grid.SetValue(0, 5, "--format (noChange|color|dxt|normal|normalInvertY)");
-			grid.SetValue(1, 5, "Specifies the SurfaceFormat type of processed texture. Textures can either remain unchanged the source asset, converted to the Color format, DXT compressed, or DXT5nm compressed. Default value is 'color'.");
-			grid.SetValue(0, 6, "--referenceAlpha <floatNumber>");
-			grid.SetValue(1, 6, "Specifies the reference alpha value, which is used in the alpha test. Default value is 0.9f.");
-			grid.SetValue(0, 7, "-s, --scaleAlphaToCoverage");
-			grid.SetValue(1, 7, "Specifies whether the alpha of the lower mipmap levels should be scaled to achieve the same alpha test coverage as in the source image.");
+			grid.SetValue(0, 0, "-o, -output <path>");
+			grid.SetValue(1, 0, "Specifies the output DDS file.");
+			grid.SetValue(0, 1, "-n, --noMipmaps");
+			grid.SetValue(1, 1, "Prevents the generation of the mipmaps.");
+			grid.SetValue(0, 2, "--inputGamma <floatNumber>");
+			grid.SetValue(1, 2, "Specifies the gamma of the input texture. Default value is 2.2f.");
+			grid.SetValue(0, 3, "--outputGamma <floatNumber>");
+			grid.SetValue(1, 3, "Specifies the gamma of the output texture. Default value is 2.2f.");
+			grid.SetValue(0, 4, "-a, --noPremultiplyAlpha");
+			grid.SetValue(1, 4, "Prevents the premultiply of the alpha.");
+			grid.SetValue(0, 5, "-r, --resizeToPowerOfTwo");
+			grid.SetValue(1, 5, "If enabled, the texture is resized to the next largest power of two, maximizing compatibility. Many graphics cards do not support textures sizes that are not a power of two.");
+			grid.SetValue(0, 6, "--format (noChange|color|dxt|normal|normalInvertY)");
+			grid.SetValue(1, 6, "Specifies the SurfaceFormat type of processed texture. Textures can either remain unchanged the source asset, converted to the Color format, DXT compressed, or DXT5nm compressed. Default value is 'color'.");
+			grid.SetValue(0, 7, "--referenceAlpha <floatNumber>");
+			grid.SetValue(1, 7, "Specifies the reference alpha value, which is used in the alpha test. Default value is 0.9f.");
+			grid.SetValue(0, 8, "-s, --scaleAlphaToCoverage");
+			grid.SetValue(1, 8, "Specifies whether the alpha of the lower mipmap levels should be scaled to achieve the same alpha test coverage as in the source image.");
 
 			Console.WriteLine(grid.ToString());
 		}
 
-		static float ParseFloat(string name, string[] args, ref int i)
+		static string ParseString(string name, string[] args, ref int i)
 		{
 			++i;
 			if (i >= args.Length)
@@ -60,8 +62,15 @@ namespace DigitalRise.TextureConverter
 				throw new Exception($"Value isn't provided for '{name}'");
 			}
 
+			return args[i];
+		}
+
+		static float ParseFloat(string name, string[] args, ref int i)
+		{
+			var value = ParseString(name, args, ref i);
+
 			float result;
-			if (!float.TryParse(args[i], out result))
+			if (!float.TryParse(value, out result))
 			{
 				throw new Exception($"Unable to parse float value '{args[i]}' for the argument '{name}'.");
 			}
@@ -71,14 +80,10 @@ namespace DigitalRise.TextureConverter
 
 		static T ParseEnum<T>(string name, string[] args, ref int i) where T: struct
 		{
-			++i;
-			if (i >= args.Length)
-			{
-				throw new Exception($"Value isn't provided for {name}");
-			}
+			var value = ParseString(name, args, ref i);
 
 			T result;
-			if (!Enum.TryParse(args[i], true, out result))
+			if (!Enum.TryParse(value, true, out result))
 			{
 				throw new Exception($"Unable to parse enum value '{args[i]}' for the argument '{name}'.");
 			}
@@ -103,6 +108,11 @@ namespace DigitalRise.TextureConverter
 
 				switch(arg)
 				{
+					case "-o":
+					case "--output":
+						options.OutputFile = ParseString("output", args, ref i);
+						break;
+
 					case "-n":
 					case "-noMipmaps":
 						options.GenerateMipmaps = false;
@@ -156,7 +166,7 @@ namespace DigitalRise.TextureConverter
 				throw new Exception("Input file is not specified");
 			}
 
-			Console.WriteLine(options.ToString());
+			Log(options.ToString());
 
 			if (!File.Exists(options.InputFile))
 			{
@@ -172,7 +182,15 @@ namespace DigitalRise.TextureConverter
 
 			var texture = processor.Process(textureContent, options);
 
-			var outputFile = Path.ChangeExtension(options.InputFile, "dds");
+			var outputFile = options.OutputFile;
+			if (string.IsNullOrEmpty(options.OutputFile))
+			{
+				outputFile = options.InputFile;
+			}
+
+			outputFile = Path.ChangeExtension(outputFile, "dds");
+
+			Log($"Writing to '{outputFile}'");
 			using (var output = File.OpenWrite(outputFile))
 			{
 				DdsHelper.Save(texture, output, DdsFlags.None);
